@@ -2,15 +2,17 @@ const express = require('express');
 const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
+const path = require('path');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(express.static(path.join(__dirname, '../public')));
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
 app.get('/', (req, res) => {
-    res.json({ message: 'Campus API is running!' });
+    res.sendFile(path.join(__dirname, '../public', 'index.html'));
 });
 
 // API endpoint to get all mahasiswa
