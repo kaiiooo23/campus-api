@@ -31,20 +31,24 @@ app.post('/api/mahasiswa', async (req, res) => {
 });
 
 // API endpoint to update a mahasiswa
-app.put('/api/mahasiswa/:nim', async (req, res) => {
-    const {id} = req.params;
-    const { nama_lengkap, program_studi } = req.body;
+app.put('/api/mahasiswa/:id', async (req, res) => {
+    const { id } = req.params; // Pastikan mengambil dari req.params
+    const { nim, nama_lengkap, program_studi } = req.body;
+    if (!id || id === 'undefined') {
+        return res.status(400).json({ error: 'ID tidak valid' });}
     const { data, error } = await supabase.from('mahasiswa').update({ nim, nama_lengkap, program_studi }).eq('id', id).select();
     if (error) return res.status(400).json({ error: error.message });
-    res.status(200).json({message: 'Mahasiswa updated successfully', data});
+    res.status(200).json({ message: 'Data berhasil diupdate', data });
 });
 
 // API endpoint to delete a mahasiswa
-app.delete('/api/mahasiswa/:nim', async (req, res) => {
-    const {id} = req.params;
+app.delete('/api/mahasiswa/:id', async (req, res) => {
+    const { id } = req.params; // Pastikan mengambil dari req.params
+    if (!id || id === 'undefined') {
+    return res.status(400).json({ error: 'ID tidak valid' });}
     const { data, error } = await supabase.from('mahasiswa').delete().eq('id', id).select();
     if (error) return res.status(400).json({ error: error.message });
-    res.status(200).json({message: 'Mahasiswa deleted successfully', data});
+    res.status(200).json({ message: 'Data berhasil dihapus', data });
 });
 
 module.exports = app;
