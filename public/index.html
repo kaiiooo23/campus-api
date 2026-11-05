@@ -194,7 +194,7 @@
       const API_URL = "/api/mahasiswa";
       let rawData = [];
 
-      // 1. GET (Read All)
+      // 1. GET (Ambil semua data)
       async function fetchData() {
         try {
           const res = await fetch(API_URL);
@@ -207,6 +207,7 @@
         }
       }
 
+      // 2. Render Data ke Tabel
       function renderTable(data) {
         const tbody = document.getElementById("tableBody");
         if (!Array.isArray(data) || data.length === 0) {
@@ -217,28 +218,77 @@
         tbody.innerHTML = data
           .map(
             (m) => `
-    <tr class="hover:bg-zinc-800/30 transition">
-      <td class="px-6 py-4 font-mono text-zinc-400 text-xs">${m.nim}</td>
-      <td class="px-6 py-4 font-medium text-white">${m.nama_lengkap}</td>
-      <td class="px-6 py-4">
-        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-zinc-800 text-zinc-300 border border-zinc-700">
-          ${m.program_studi}
-        </span>
-      </td>
-      <td class="px-6 py-4 text-right space-x-2">
-        <button onclick="editModal('${m.id}')" class="text-xs font-medium text-amber-400 hover:text-amber-300">Edit</button>
-        <button onclick="deleteData('${m.id}')" class="text-xs font-medium text-rose-400 hover:text-rose-300">Hapus</button>
-      </td>
-    </tr>
-  `,
+        <tr class="hover:bg-zinc-800/30 transition">
+          <td class="px-6 py-4 font-mono text-zinc-400 text-xs">${m.nim}</td>
+          <td class="px-6 py-4 font-medium text-white">${m.nama_lengkap}</td>
+          <td class="px-6 py-4">
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-zinc-800 text-zinc-300 border border-zinc-700">
+              ${m.program_studi}
+            </span>
+          </td>
+          <td class="px-6 py-4 text-right space-x-2">
+            <button onclick="editModal('${m.id}')" class="text-xs font-medium text-amber-400 hover:text-amber-300 transition">Edit</button>
+            <button onclick="deleteData('${m.id}')" class="text-xs font-medium text-rose-400 hover:text-rose-300 transition">Hapus</button>
+          </td>
+        </tr>
+      `,
           )
           .join("");
       }
 
-      // Function Edit Modal
+      // 3. Submit Form (Tambah & Edit dengan Validasi)
+      async function handleSubmit(e) {
+        e.preventDefault();
+        const id = document.getElementById("studentId").value;
+        const nim = document.getElementById("nim").value.trim();
+        const nama_lengkap = document
+          .getElementById("nama_lengkap")
+          .value.trim();
+        const program_studi = document
+          .getElementById("program_studi")
+          .value.trim();
+
+        if (!nim || !nama_lengkap || !program_studi) {
+          alert("Semua kolom wajib diisi!");
+          return;
+        }
+
+        if (id && !confirm(`Simpan perubahan untuk data "${nama_lengkap}"?`)) {
+          return;
+        }
+
+        const payload = { nim, nama_lengkap, program_studi };
+        const method = id ? "PUT" : "POST";
+        const url = id ? `${API_URL}/${id}` : API_URL;
+
+        try {
+          const res = await fetch(url, {
+            method,
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+
+          const result = await res.json();
+
+          if (!res.ok) {
+            alert("Gagal: " + (result.error || "Terjadi kesalahan"));
+            return;
+          }
+
+          alert(
+            id ? "Data berhasil diperbarui!" : "Data berhasil ditambahkan!",
+          );
+          closeModal();
+          fetchData();
+        } catch (err) {
+          alert("Gagal terhubung ke server.");
+        }
+      }
+
+      // 4. Buka Modal Edit
       function editModal(id) {
         if (!id || id === "undefined")
-          return alert("ID Mahasiswa tidak ditemukan!");
+          return alert("ID Mahasiswa tidak valid!");
 
         const item = rawData.find((m) => m.id === id);
         if (!item) return alert("Data tidak ditemukan!");
@@ -251,24 +301,34 @@
         document.getElementById("modal").classList.remove("hidden");
       }
 
-      // Function Delete Data
+      // 5. Hapus Data (dengan Konfirmasi Nama)
       async function deleteData(id) {
         if (!id || id === "undefined")
           return alert("ID Mahasiswa tidak valid!");
-        if (!confirm("Yakin ingin menghapus data ini?")) return;
 
-        const res = await fetch(`${API_URL}/${id}`, { method: "DELETE" });
-        const result = await res.json();
+        const item = rawData.find((m) => m.id === id);
+        const namaTarget = item ? item.nama_lengkap : "mahasiswa ini";
 
-        if (!res.ok) {
-          alert("Gagal menghapus: " + (result.error || "Terjadi kesalahan"));
+        if (!confirm(`Apakah Anda yakin ingin menghapus data "${namaTarget}"?`))
           return;
-        }
 
-        fetchData();
+        try {
+          const res = await fetch(`${API_URL}/${id}`, { method: "DELETE" });
+          const result = await res.json();
+
+          if (!res.ok) {
+            alert("Gagal menghapus: " + (result.error || "Terjadi kesalahan"));
+            return;
+          }
+
+          alert(`Data "${namaTarget}" berhasil dihapus.`);
+          fetchData();
+        } catch (err) {
+          alert("Gagal terhubung ke server.");
+        }
       }
 
-      // Filter Search
+      // 6. Pencarian (Filter Search)
       function filterData() {
         const q = document.getElementById("searchInput").value.toLowerCase();
         const filtered = rawData.filter(
@@ -279,7 +339,7 @@
         renderTable(filtered);
       }
 
-      // Modal Helpers
+      // 7. Helper Modal
       function openModal() {
         document.getElementById("modalTitle").innerText = "Tambah Mahasiswa";
         document.getElementById("studentForm").reset();
@@ -287,52 +347,11 @@
         document.getElementById("modal").classList.remove("hidden");
       }
 
-      function editModal(id) {
-        const item = rawData.find((m) => m.id === id);
-        if (!item) return;
-
-        document.getElementById("modalTitle").innerText = "Edit Mahasiswa";
-        document.getElementById("studentId").value = item.id;
-        document.getElementById("nim").value = item.nim;
-        document.getElementById("nama_lengkap").value = item.nama_lengkap;
-        document.getElementById("program_studi").value = item.program_studi;
-        document.getElementById("modal").classList.remove("hidden");
-      }
-
-      // 2. Ganti fungsi renderTable (tombol edit hanya mengirim `id`)
-      function renderTable(data) {
-        const tbody = document.getElementById("tableBody");
-        if (data.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-zinc-500">Tidak ada data mahasiswa.</td></tr>`;
-          return;
-        }
-
-        tbody.innerHTML = data
-          .map(
-            (m) => `
-    <tr class="hover:bg-zinc-800/30 transition">
-      <td class="px-6 py-4 font-mono text-zinc-400 text-xs">${m.nim}</td>
-      <td class="px-6 py-4 font-medium text-white">${m.nama_lengkap}</td>
-      <td class="px-6 py-4">
-        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-zinc-800 text-zinc-300 border border-zinc-700">
-          ${m.program_studi}
-        </span>
-      </td>
-      <td class="px-6 py-4 text-right space-x-2">
-        <button onclick="editModal('${m.id}')" class="text-xs font-medium text-amber-400 hover:text-amber-300 transition">Edit</button>
-        <button onclick="deleteData('${m.id}')" class="text-xs font-medium text-rose-400 hover:text-rose-300 transition">Hapus</button>
-      </td>
-    </tr>
-  `,
-          )
-          .join("");
-      }
-
       function closeModal() {
         document.getElementById("modal").classList.add("hidden");
       }
 
-      // Load initial data
+      // Load data awal
       fetchData();
     </script>
   </body>
